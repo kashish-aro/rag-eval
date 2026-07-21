@@ -455,12 +455,46 @@ The corpus-sync test uses `load_corpus` to derive the set, so a rename in
 `corpus/` fails the loader without any test edit. Commit.
 
 **Step 4. Embedder + on-disk cache.**
-`src/rag_eval/embedder.py`: wraps `SentenceTransformer`. `embed(texts) ->
-np.ndarray`. Cache under `.cache/embeddings/` keyed by a hash of
-`(model_name, text)`. Test with a stub model (monkeypatched) to avoid pulling
-sentence-transformers into unit tests: cache hit skips recompute; cache miss
-computes then writes; shape correct. A separate slow test (`@pytest.mark.slow`,
-skipped by default) exercises the real model on two short strings. Commit.
+`src/rag_eval/embedder.py`: wraps `SentenceTransformer`. `Embedder(model_name,
+cache_dir=None, model=None).embed(texts) -> np.ndarray`. Model is injected
+via the `model=` kwarg for tests; the real `sentence_transformers` import is
+deferred to first `embed()` so unit tests never load ST.
+
+Cache is content-addressed on `(model_name, text)`. Two properties are
+non-negotiable:
+
+- **Model name is part of the key.** Otherwise a config-comparison run
+  swapping MiniLM for mpnet reads MiniLM vectors out of cache and the whole
+  embedder bake-off is silently invalid. Key = `sha256(model_name || \0 ||
+  text)` with a null-byte separator so `(model="ab", text="cd")` and
+  `(model="a", text="bcd")` cannot collide.
+- **Cached vector is bit-identical to freshly computed.** Otherwise a
+  cache write/read bug could quietly change embeddings between runs. `.npy`
+  format preserves dtype and shape; test asserts `np.array_equal(fresh,
+  cached)`, not approximate equality.
+
+Empty text list raises (dimensionality is unknown; returning any shape is
+a guess).
+
+Unit tests (fast, all stub-injected):
+- `_cache_key` includes model name — same text under two model names yields
+  different keys, and two `Embedder`s with different `model_name` embedding
+  the same text produce two files on disk.
+- No separator collision between `(model, text)` boundary variants.
+- Cache miss computes and writes; cache hit returns without invoking the
+  model (verified by a stub that records call history).
+- Cached vector `np.array_equal` fresh vector.
+- Mixed hit/miss in one call — only misses are computed, output stays in
+  input order.
+- Cache persists across `Embedder` instances: a new instance with a
+  different stub model reads the prior cache and never invokes the new
+  stub.
+- Empty list raises.
+
+Slow test (`@pytest.mark.slow`, opt-in via `-m slow`): loads
+`sentence-transformers/all-MiniLM-L6-v2`, embeds two short strings, asserts
+shape `(2, 384)`, and asserts `np.array_equal` on a second call to prove
+cache determinism against the real model. Commit.
 
 **Step 5. Retriever.**
 `src/rag_eval/retriever.py`: `Retriever(chunks, embeddings)` with
