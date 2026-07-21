@@ -531,12 +531,48 @@ Tests (all fast, hand-built numpy arrays):
   `doc_id` field populated correctly. Commit.
 
 **Step 6. Retrieval metrics.**
-`src/rag_eval/metrics_retrieval.py`: functions `any_hit_at_k`, `recall_at_k`,
-`reciprocal_rank`, plus an aggregator that accepts per-question retrieved
-docs + gold docs + `answerable` flag and returns aggregate + per-question
-records, excluding unanswerable from aggregates. Test with hand-crafted
-inputs: known outputs for hit/recall/MRR; unanswerable questions excluded.
-Commit.
+`src/rag_eval/metrics_retrieval.py`: `collapse_to_docs`, `any_hit_at_k`,
+`recall_at_k`, `reciprocal_rank` (all at k), and
+`aggregate_retrieval_metrics` producing per-question and aggregate records.
+
+Chunk→doc collapse is the critical operation here — it's the inflation risk
+the chunk_id contract was built for. `collapse_to_docs(retrieved, k)` takes
+the top-k chunks in rank order, deduplicates by `doc_id`, and returns unique
+doc_ids in first-seen order (dict insertion order for determinism). All
+three metrics call it, so if a splitting chunker later returns two chunks of
+the same doc in top-k they collapse to one doc and cannot inflate hit@k or
+recall@k.
+
+All three metrics take the same `k` so a single retrieval call at max-k can
+be scored at multiple k values (k=1, 3, 5) in one pass. MRR at k means
+"1 / rank of first relevant doc within collapsed top-k, else 0."
+
+Unanswerable questions are excluded structurally, not scored as zero: the
+aggregate divides by `n_answerable` only, and metric functions raise on
+empty `relevant` sets. The aggregator routes unanswerable questions around
+the metric calls and records `None` in their per-question row. Per-question
+records still include unanswerable entries with their retrieved doc_ids so a
+reader can see what retrieval returned when nothing was relevant.
+
+Tests (all hand-crafted with known outputs):
+
+- **collapse_to_docs:** no-dupes case, dupes-in-top-k case, k-limits-input
+  case, dupe-outside-top-k excluded, k=0 raises.
+- **any_hit_at_k:** hit and miss, and — the invariant that the whole
+  chunk_id contract exists for — retrieved [doc_05#0, doc_05#1, doc_03#0]
+  with relevant {doc_05} at k=3 is one hit, not two.
+- **recall_at_k:** single-relevant hit and miss, multi-doc one-of-two vs
+  both-of-two (distinguishes 0.5 from 1.0), chunk-duplication does not
+  inflate: retrieved [a#0, a#1, a#2] with relevant {a, b} at k=3 is 0.5
+  (not 1.5), empty relevant raises.
+- **reciprocal_rank:** first position (1.0), second position (0.5), not
+  found (0.0), rank-is-at-doc-level: retrieved [a#0, a#1, b#0] with
+  relevant {b} is 0.5 not 1/3 (b is the 2nd distinct doc), empty raises.
+- **Aggregator:** hand-crafted 3-answerable + 2-unanswerable case with
+  values computed by hand. Asserts aggregate any_hit_rate, mean_recall,
+  mean_reciprocal_rank divide by 3 (not 5); per_question has 5 rows with
+  unanswerable ones showing `None` for hit/recall/rr but populated
+  `retrieved_doc_ids`; `n_answerable=3`, `n_unanswerable=2`. Commit.
 
 **Step 7. Retrieval-only end-to-end.**
 `src/rag_eval/eval_retrieval.py`: wires loader → chunker → embedder →
