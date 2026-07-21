@@ -369,7 +369,26 @@ pass. Commit.
 **Step 1. Corpus loader.**
 `src/rag_eval/corpus.py`: `load_corpus(path) -> list[Document]`, where
 `Document = (doc_id, text)` and `doc_id` is the filename stem (`doc_01`).
-Test: loads all 18 docs, ids match filenames, non-empty text. Commit.
+Loader fails loudly rather than returning a partial set: raises if the
+directory is missing, if it contains zero `.md` files, or if any file is
+empty / whitespace-only. An eval that runs on a partial corpus and reports
+scores anyway is worse than one that crashes.
+
+Tests:
+- Loads all 18 docs; ids match filenames; text preserved verbatim.
+- Missing directory raises `FileNotFoundError`.
+- Directory with no `.md` files raises `ValueError`.
+- Empty file and whitespace-only file each raise `ValueError`.
+- Load order is deterministic across calls.
+- **Cross-consistency test** (`tests/test_corpus_questions_sync.py`): every
+  `doc_id` referenced by `questions.jsonl.relevant_doc_ids` exists in the
+  corpus. Written independently of the future question loader (parses
+  `questions.jsonl` directly) so a bug in the loader can't hide a mismatch.
+  Rationale: labels reference doc_ids by filename stem; a rename or
+  deletion would silently zero out recall for affected questions without
+  this guard.
+
+Commit.
 
 **Step 2. Chunker.**
 `src/rag_eval/chunker.py`: an interface (`chunk(docs) -> list[Chunk]`) and a
