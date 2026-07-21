@@ -499,9 +499,36 @@ cache determinism against the real model. Commit.
 **Step 5. Retriever.**
 `src/rag_eval/retriever.py`: `Retriever(chunks, embeddings)` with
 `query(question_embedding, k) -> list[Retrieved(chunk_id, doc_id, score)]`.
-Uses numpy cosine. Test with hand-built embeddings: query vector nearest to
-chunk X returns X first; k is respected; ties broken deterministically (e.g.,
-by chunk_id). Commit.
+Uses numpy cosine (chunk embeddings pre-normalized at construction). No
+approximate index — 18 chunks is trivial.
+
+Two ordering invariants, documented on the class and covered by tests:
+
+- **Descending score.** `result[i].score >= result[i+1].score` always.
+- **Deterministic tie-break by `chunk_id` ascending.** When two chunks have
+  identical cosine, the one with the lexicographically smaller `chunk_id`
+  comes first. Otherwise numpy's argsort would return an implementation-
+  defined order for tied scores and the same query would produce different
+  top-k across runs, silently making every downstream metric
+  non-reproducible. Implemented via Python's stable `sorted(...,
+  key=lambda i: (-score[i], chunk_id[i]))`.
+
+`k <= 0` raises; `k > n` returns all n results.
+
+Tests (all fast, hand-built numpy arrays):
+- `Retrieved` is frozen; length mismatch at init raises; `k=0` raises;
+  `k > n` returns n.
+- **Hand-worked cosine.** Chunks with un-normalized embeddings `[1,0]`,
+  `[0,1]`, `[1,1]`; query `[1,0]`. Expected cosines by hand: `1.0`, `0.0`,
+  `1/√2`. Test asserts both order (`a, c, b`) and each score with tolerance.
+  Also proves the normalization path works (chunks were not unit-length).
+- **Ties broken by chunk_id ascending.** Three chunks with identical
+  embeddings, ids `z#0`, `a#0`, `m#0`; result must be `[a#0, m#0, z#0]`.
+- **Stability across repeated calls.** Same tie-configured retriever,
+  same query, called three times — all three results identical.
+- **Partial tie.** Two tied at top, one lower — top pair broken by chunk_id.
+- Scores are descending across a mixed set; orthogonal query scores 0;
+  `doc_id` field populated correctly. Commit.
 
 **Step 6. Retrieval metrics.**
 `src/rag_eval/metrics_retrieval.py`: functions `any_hit_at_k`, `recall_at_k`,
