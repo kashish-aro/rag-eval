@@ -419,11 +419,40 @@ d in docs}` and no doc emitting more than one chunk** — this is the
 1:1 assertion the doc-collapse logic will rely on. Commit.
 
 **Step 3. Question loader.**
-`src/rag_eval/questions.py`: `load_questions(path) -> list[Question]`;
-validate schema (id, question, answer nullable, relevant_doc_ids list,
-answerable bool). Provide `.answerable_only()` and `.unanswerable_only()`
-helpers. Test: 20 loaded, 16 answerable, 4 unanswerable, unanswerable have
-`answer is None` and empty `relevant_doc_ids`. Commit.
+`src/rag_eval/questions.py`: `load_questions(path, corpus_doc_ids: set[str])
+-> QuestionSet`. `Question` is a frozen dataclass. `QuestionSet` wraps the
+loaded rows and provides `.answerable_only()` / `.unanswerable_only()`.
+
+`questions.jsonl` is authoritative ground truth; every retrieval and
+faithfulness score derives from it. Silent breakage there produces
+authoritative-looking numbers computed against a broken set. The loader
+therefore re-validates every invariant at load time and raises rather than
+returning a partially valid set:
+
+- File exists and is non-empty.
+- Each line parses as JSON with all required fields present and correctly
+  typed (id: non-empty str; question: non-empty str; answer: str | None;
+  relevant_doc_ids: list[str]; answerable: bool).
+- Every `id` is unique across the file.
+- Three-way consistency: `answerable == (answer is not None) ==
+  bool(relevant_doc_ids)`. All three must agree; any mismatch raises.
+- Every `relevant_doc_id` exists in the passed `corpus_doc_ids` set.
+  Corpus ids are supplied by the caller (typically the eval runner using
+  `load_corpus`) rather than hardcoded, so the invariant tracks the real
+  corpus rather than a stale snapshot.
+
+Error messages include line number and question id.
+
+Tests: happy-path load produces 20 questions, 16 answerable / 4 unanswerable,
+`.answerable_only()` / `.unanswerable_only()` return the expected splits,
+unanswerable rows have `answer is None` and empty `relevant_doc_ids`,
+`Question` is frozen. One test per failure mode: missing file, empty file,
+malformed JSON, missing field, wrong-type field, duplicate id, each of the
+four ways the three-way invariant can break (answerable=True + no answer,
+answerable=True + no docs, answerable=False + has answer, answerable=False
++ has docs), and unknown `relevant_doc_id` against the passed corpus set.
+The corpus-sync test uses `load_corpus` to derive the set, so a rename in
+`corpus/` fails the loader without any test edit. Commit.
 
 **Step 4. Embedder + on-disk cache.**
 `src/rag_eval/embedder.py`: wraps `SentenceTransformer`. `embed(texts) ->
