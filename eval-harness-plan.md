@@ -391,9 +391,32 @@ Tests:
 Commit.
 
 **Step 2. Chunker.**
-`src/rag_eval/chunker.py`: an interface (`chunk(docs) -> list[Chunk]`) and a
-`WholeDocChunker` implementation. Test: 18 chunks in, 18 chunks out, doc_ids
-preserved, chunk text equals doc text. Commit.
+`src/rag_eval/chunker.py`: `Chunk(chunk_id, doc_id, text)` and a
+`WholeDocChunker` implementation returning one chunk per document.
+
+`chunk_id` is `"{doc_id}#{i}"` where `i` disambiguates multiple chunks from
+the same doc (always `0` for whole-doc chunking). This is deliberate: doc-level
+retrieval metrics require collapsing chunk hits to doc hits, and if that
+collapse is buggy `hit@k` silently inflates (e.g., three chunks from doc_05
+in top-3 looks like three hits but is one doc). Baking the doc_id into the
+chunk_id gives future splitting chunkers a fixed contract to preserve, so the
+collapse logic downstream has one invariant to check instead of trusting
+whatever a new chunker happens to produce.
+
+Contract (documented on `WholeDocChunker` and enforced by tests, applies to
+every future chunker):
+- `chunk.doc_id == chunk.chunk_id.split("#")[0]`
+- `chunk_id` values are unique across the corpus
+- Concatenating chunks with the same `doc_id` in emitted order recovers the
+  source document's text
+- Emission order is deterministic across calls
+
+Tests: chunk dataclass is frozen; small-input cases (empty list → empty
+output, 2-doc list → 2 chunks); `chunk_id` format and doc_id extraction; ids
+unique; text preserved verbatim; **applied to the full corpus, produces
+exactly one chunk per doc with `{c.doc_id for c in chunks} == {d.doc_id for
+d in docs}` and no doc emitting more than one chunk** — this is the
+1:1 assertion the doc-collapse logic will rely on. Commit.
 
 **Step 3. Question loader.**
 `src/rag_eval/questions.py`: `load_questions(path) -> list[Question]`;
