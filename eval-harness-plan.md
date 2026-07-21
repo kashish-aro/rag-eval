@@ -575,11 +575,37 @@ Tests (all hand-crafted with known outputs):
   `retrieved_doc_ids`; `n_answerable=3`, `n_unanswerable=2`. Commit.
 
 **Step 7. Retrieval-only end-to-end.**
-`src/rag_eval/eval_retrieval.py`: wires loader → chunker → embedder →
-retriever → metrics and writes a JSON to `runs/`. Test (marked slow / opt-in
-because it embeds): full run on the fixture completes and produces a valid
-report; per-question records present for all 20 questions; aggregates only
-over 16. Commit.
+`src/rag_eval/eval_retrieval.py`: thin wiring — loader → chunker → embedder
+→ retriever → metrics → JSON under `runs/`. Returns the written `Path`.
+
+The run JSON must record which chunker, embedder, and k produced it, or
+the report is unusable for the config comparisons this harness exists to
+enable. Config section is first-class:
+
+```
+{
+  "config": {"chunker": "WholeDocChunker", "embedder_model": "...", "k": 3},
+  "generated_at": "...",
+  "aggregate": {...},
+  "per_question": [...]
+}
+```
+
+Filename also encodes the config so `ls runs/` is informative:
+`retrieval-{chunker_slug}-{embedder_slug}-k{k}-{ts}.json`. Microsecond
+timestamp so same-second re-runs don't collide.
+
+Fast tests (in-memory corpus, stub-injected Embedder — no ST):
+- Full run writes a file at the expected path and returns it.
+- `config` section carries chunker name, embedder model, and k accurately;
+  changing any of the three shows up in the file.
+- `aggregate` section has all required fields.
+- `per_question` has one entry per question with expected shape.
+- Filename slugs match the config values used.
+
+Slow test (`@pytest.mark.slow`): real MiniLM on the fixture corpus and
+questions at k=3, asserts the file is valid, `per_question` has 20 entries,
+`n_answerable=16`, `n_unanswerable=4`. Commit.
 
 **Step 8. Generator.**
 `src/rag_eval/generator.py`: loads Qwen once, exposes `generate(prompt) ->
