@@ -96,3 +96,39 @@ For a stronger signal on chunking specifically, the useful next step is
 either grow the multi-doc question set (we currently have 4; even 8–12
 would let us start seeing real deltas) or add a k-sweep (k=1, 3, 5) so we
 can see whether the multi-doc gap closes at larger k.
+
+## Limitations
+
+**What this comparison could not settle, and what would settle it:**
+
+1. **Chunker choice on retrieval quality is undecidable at this N.** The
+   entire comparison rests on 4 multi-doc questions (q013–q016) — the 12
+   single-doc questions are perfectly retrieved by every chunker and
+   carry zero signal. A 1-question delta on a 4-question subset is
+   trivially within noise; no statistical test would call any of these
+   three chunkers "better."
+
+   To make the retrieval axis decisive, either **grow the multi-doc
+   question set** (target 8–12, ideally with questions that require the
+   retriever to assemble facts from documents whose topical overlap is
+   low) or **add more multi-doc *distractors*** (topically-adjacent docs
+   that shouldn't be retrieved) so the metric can distinguish
+   discriminating retrievers.
+
+2. **k was fixed at 3.** A k-sweep (k=1, 3, 5, 10) would show whether
+   the multi-doc gap between whole-doc and splitting chunkers is a
+   ceiling effect at k=3 that closes at larger k, or a persistent
+   difference. Cheap to run — same three chunkers, three more k values.
+
+3. **This is retrieval-only.** The chunker choice affects the
+   generator's prompt (whole-doc gives ~500–1500 chars per retrieved
+   doc; heading gives ~100–400). We measured which chunker helps
+   retrieval; we did NOT measure which chunker helps the generator
+   answer correctly. Once the full pipeline lands and judge validation
+   passes, re-run this comparison at the faithfulness layer — that's
+   where a real chunker decision should be made, if there's one to make.
+
+4. **Only one FixedWindowChunker configuration was tested** (size=400,
+   overlap=50). We can't distinguish "fixed windows don't help here"
+   from "size=400 doesn't help here." A small sweep over (size, overlap)
+   would isolate that.
