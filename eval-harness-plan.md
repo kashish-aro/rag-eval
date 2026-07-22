@@ -608,12 +608,34 @@ questions at k=3, asserts the file is valid, `per_question` has 20 entries,
 `n_answerable=16`, `n_unanswerable=4`. Commit.
 
 **Step 8. Generator.**
-`src/rag_eval/generator.py`: loads Qwen once, exposes `generate(prompt) ->
-str` with `do_sample=False`, fixed seed, `max_new_tokens` cap. Prompt
-template lives in `src/rag_eval/prompts.py` with a `render_generator_prompt`
-function. Test: prompt rendering is deterministic and formatted as expected
-(no model needed). A slow test does a single greedy generation and asserts
-identical output across two calls (determinism smoke test). Commit.
+Two files:
+
+- `src/rag_eval/prompts.py`: `render_generator_prompt(question,
+  context_chunks) -> list[dict]` returning a Qwen-style message list
+  (system + user). `context_chunks` is a list of `(doc_id, text)` tuples
+  in retrieval rank order; the renderer formats them with visible headers
+  (`--- {doc_id} ---\n{text}`) so chunk boundaries don't blur.
+  `SYSTEM_PROMPT` establishes the RAG contract: answer only from
+  context, and if the context does not cover the question respond
+  *exactly* with `"I don't know."`. The "exactly" matters because the
+  judge and rule-based scorer both parse refusals — a fixed refusal
+  string keeps that parse simple.
+- `src/rag_eval/generator.py`: `Generator(model_name, seed=42,
+  max_new_tokens=200, model=None, tokenizer=None)`. `.generate(messages)
+  -> str` applies the tokenizer's chat template, runs greedy decoding
+  (`do_sample=False`), decodes only the newly generated tokens (not the
+  echoed prompt). `torch.manual_seed` is set at first model load.
+  Transformers import is deferred to first call; model + tokenizer
+  injectable so unit tests don't pull ML deps.
+
+Fast tests: prompt renderer returns 2 messages (system + user), system
+message contains the "I don't know" contract, user message contains the
+question, each `(doc_id, text)` tuple appears in the user message,
+multi-chunk contexts get their delimiter, empty context still renders.
+
+Slow test (`@pytest.mark.slow`): real Qwen greedy generation of a fixed
+prompt twice, `assert output_1 == output_2` — this is the determinism
+guarantee the config-comparison harness depends on. Commit.
 
 **Step 9. Rule-based faithfulness scorer.**
 `src/rag_eval/scorer_rules.py`: `score_rule_based(question, reference,
