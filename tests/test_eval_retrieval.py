@@ -111,6 +111,7 @@ def test_config_section_records_chunker_embedder_and_k(tmp_path):
     )
     assert report["config"] == {
         "chunker": "WholeDocChunker",
+        "chunker_params": {},
         "embedder_model": "sentence-transformers/all-MiniLM-L6-v2",
         "k": 3,
     }

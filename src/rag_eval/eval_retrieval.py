@@ -50,8 +50,12 @@ def run_retrieval_eval(
     metrics = aggregate_retrieval_metrics(results, k)
 
     chunker_name = type(chunker).__name__
+    chunker_params = (
+        chunker.params() if hasattr(chunker, "params") else {}
+    )
     config = {
         "chunker": chunker_name,
+        "chunker_params": chunker_params,
         "embedder_model": embedder.model_name,
         "k": k,
     }
