@@ -638,14 +638,58 @@ prompt twice, `assert output_1 == output_2` — this is the determinism
 guarantee the config-comparison harness depends on. Commit.
 
 **Step 9. Rule-based faithfulness scorer.**
-`src/rag_eval/scorer_rules.py`: `score_rule_based(question, reference,
-generated) -> Verdict`. Extracts factoid tokens from the reference (numbers,
-units, key phrases) and checks presence in the generated answer with
-simple normalization (case-fold, strip punctuation, allow "1,200" ≡ "1200"
-≡ "$1,200"). Returns `{CORRECT, INCORRECT, REFUSED}`. Handles `reference is
-None` (unanswerable) by looking for a refusal marker. Test: hand-crafted
-`(reference, generated)` pairs give expected verdicts, including tricky
-cases like unit variants and refusal detection. Commit.
+`src/rag_eval/scorer_rules.py`: `score_rule_based(reference, generated) ->
+Verdict`. Returns `{CORRECT, INCORRECT, REFUSED}` per the "did the right
+thing for this question type" semantics: CORRECT means the model behaved
+correctly for the question (matched reference, or refused an unanswerable);
+INCORRECT means it did the wrong thing; REFUSED is reserved for answerable
+questions where the model gave up.
+
+Strategy is number-only extraction with multi-fact strictness — every
+numeric fact in the reference must appear in the answer (after
+normalization) for CORRECT. Missing any → INCORRECT. This is the primary
+over-credit guard: a partial answer scores INCORRECT rather than CORRECT,
+because over-crediting is the failure mode that would make the scorer
+useless as a standalone signal.
+
+Normalizations:
+- Strip commas and currency symbols: `"1,200"` ≡ `"1200"` ≡ `"$1,200"` ≡
+  `"1,200 dollars"`.
+- Strip trailing decimal zeros: `"1.250"` ≡ `"1.25"`, `"100.00"` ≡ `"100"`.
+- Number-words for 0-20 and tens 30-90: `"fifteen"` ≡ `"15"`, `"five"` ≡
+  `"5"`. Compound number-words ("twenty-five") not handled — deferred.
+
+Design decisions with tradeoffs, documented in the code:
+- **"Just the number" matches** — `"15"` alone matches reference `"15 days"`
+  because the number is the primary fact and the unit is usually implied
+  by the question. Matches the user's explicit requirement.
+- **Extra numbers in the answer don't penalize.** A verbose answer that
+  mentions the right facts plus extras is CORRECT. Penalizing verbosity
+  would depress scores on well-formed answers.
+- **Reference with no extractable numbers → INCORRECT conservatively.**
+  Can't verify; under-crediting is preferable to over-crediting.
+
+Refusal detection: case-insensitive substring match on `"I don't know"`
+(matches the REFUSAL_STRING constant from prompts.py). The system prompt
+tells the generator to emit the exact string, so this is a tight coupling
+by design — a change to REFUSAL_STRING requires updating both.
+
+Tests are hand-crafted, one per case:
+- Number normalization: `"$1,200"`, `"1200"`, and `"1,200 dollars"` all
+  match `"$1,200 stipend"` reference; `"fifteen"` and `"15"` both match
+  `"15 days"` reference.
+- Multi-fact strictness: reference with two numbers, answer with one →
+  INCORRECT (both the "missing dollar amount" and "missing second fact"
+  variants of partial answer).
+- Wrong number, empty answer → INCORRECT.
+- Answerable + refused → REFUSED (distinct from INCORRECT so we can
+  measure "give up" separately from "guess wrong").
+- Unanswerable + refused (in isolation and embedded in longer text) →
+  CORRECT.
+- Unanswerable + confident answer → INCORRECT (hallucinated on nothing).
+- Unanswerable + empty → INCORRECT (not a refusal).
+- Extra numbers in answer → CORRECT (design decision documented).
+- Reference without numbers → INCORRECT (conservative). Commit.
 
 **Step 10. LLM-as-judge + judge validation.**
 Two files, one commit:
