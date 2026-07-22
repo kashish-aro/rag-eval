@@ -10,6 +10,52 @@ Rules:
 REFUSAL_STRING = "I don't know."
 
 
+JUDGE_SYSTEM_PROMPT = """You are a strict judge deciding whether a generated answer is correct.
+
+You will be given a question, a reference answer (or the marker UNANSWERABLE), the retrieved context the answerer had access to, and the generated answer. Choose exactly one verdict:
+
+- CORRECT: the generated answer matches the reference answer's facts, or, for an unanswerable question, correctly refuses (says "I don't know").
+- INCORRECT: the generated answer contains wrong facts, is missing key facts from the reference, or answers a question that has no answer.
+- REFUSED: the answer says "I don't know" for a question that has a reference answer (the model gave up on something it should have answered).
+
+You may reason briefly first, but you MUST end your response with EXACTLY this line and nothing after it:
+
+VERDICT: <one of CORRECT, INCORRECT, REFUSED>
+
+Do not write anything after the VERDICT line. Use uppercase for the verdict token.
+""".strip()
+
+
+def render_judge_prompt(
+    question: str,
+    reference: str | None,
+    context: str,
+    generated: str,
+) -> list[dict]:
+    """Build the Qwen-style message list for the LLM-as-judge.
+
+    reference=None marks an unanswerable question; the user content signals
+    this with an UNANSWERABLE marker so the judge knows the reference
+    behavior is refusal, not a matching answer.
+    """
+    ref_text = (
+        reference
+        if reference is not None
+        else "UNANSWERABLE (the correct behavior is to refuse with 'I don't know.')"
+    )
+    user_content = (
+        f"Question: {question}\n\n"
+        f"Reference answer: {ref_text}\n\n"
+        f"Retrieved context:\n{context}\n\n"
+        f"Generated answer:\n{generated}\n\n"
+        f"What is your verdict?"
+    )
+    return [
+        {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
+        {"role": "user", "content": user_content},
+    ]
+
+
 def render_generator_prompt(
     question: str,
     context_chunks: list[tuple[str, str]],

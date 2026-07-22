@@ -1,4 +1,10 @@
-from rag_eval.prompts import REFUSAL_STRING, SYSTEM_PROMPT, render_generator_prompt
+from rag_eval.prompts import (
+    JUDGE_SYSTEM_PROMPT,
+    REFUSAL_STRING,
+    SYSTEM_PROMPT,
+    render_generator_prompt,
+    render_judge_prompt,
+)
 
 
 def test_returns_two_messages_system_then_user():
@@ -67,4 +73,48 @@ def test_empty_context_still_renders():
 def test_rendering_is_deterministic():
     a = render_generator_prompt("q?", [("d", "t")])
     b = render_generator_prompt("q?", [("d", "t")])
+    assert a == b
+
+
+# ---------- judge prompt ----------
+
+
+def test_judge_system_prompt_specifies_verdict_format():
+    # The strict output contract that the parser depends on. If this text
+    # changes without updating the parser (or vice versa), the whole judge
+    # pipeline drifts silently.
+    assert "VERDICT:" in JUDGE_SYSTEM_PROMPT
+    assert "CORRECT" in JUDGE_SYSTEM_PROMPT
+    assert "INCORRECT" in JUDGE_SYSTEM_PROMPT
+    assert "REFUSED" in JUDGE_SYSTEM_PROMPT
+    assert "uppercase" in JUDGE_SYSTEM_PROMPT.lower()
+
+
+def test_judge_prompt_returns_two_messages():
+    msgs = render_judge_prompt("q?", "ref", "ctx", "ans")
+    assert len(msgs) == 2
+    assert msgs[0]["role"] == "system"
+    assert msgs[1]["role"] == "user"
+
+
+def test_judge_prompt_carries_all_four_inputs():
+    msgs = render_judge_prompt(
+        "How many days?", "15 days.", "Employees get 15 days.", "The answer is 15."
+    )
+    body = msgs[1]["content"]
+    assert "How many days?" in body
+    assert "15 days." in body
+    assert "Employees get 15 days." in body
+    assert "The answer is 15." in body
+
+
+def test_judge_prompt_marks_unanswerable_when_reference_is_none():
+    msgs = render_judge_prompt("q?", None, "ctx", "ans")
+    body = msgs[1]["content"]
+    assert "UNANSWERABLE" in body
+
+
+def test_judge_prompt_deterministic():
+    a = render_judge_prompt("q", "r", "c", "g")
+    b = render_judge_prompt("q", "r", "c", "g")
     assert a == b

@@ -8,18 +8,24 @@ class Verdict(str, Enum):
     """Faithfulness verdict per (reference, generated) pair.
 
     Semantics: "did the model do the right thing for this question type."
-      CORRECT   — matched reference, or refused an unanswerable question
-      INCORRECT — wrong facts, or answered when it should have refused
-      REFUSED   — model gave up on an answerable question
+      CORRECT     — matched reference, or refused an unanswerable question
+      INCORRECT   — wrong facts, or answered when it should have refused
+      REFUSED     — model gave up on an answerable question
+      UNPARSEABLE — the scorer could not extract a verdict (only ever
+                    emitted by LLM-based scorers, e.g. judge.py; the rule-
+                    based scorer never returns this)
 
     REFUSED is distinct from INCORRECT so the aggregator can measure
     "give up" separately from "guess wrong" — different failure modes
-    warrant different fixes upstream.
+    warrant different fixes upstream. UNPARSEABLE is a real outcome, not
+    an error: a rising rate means the judge is drifting and its numbers
+    should not be trusted.
     """
 
     CORRECT = "CORRECT"
     INCORRECT = "INCORRECT"
     REFUSED = "REFUSED"
+    UNPARSEABLE = "UNPARSEABLE"
 
 
 # Digit strings with optional thousands separators and optional decimal.

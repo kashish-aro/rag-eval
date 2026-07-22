@@ -692,6 +692,17 @@ Tests are hand-crafted, one per case:
 - Reference without numbers → INCORRECT (conservative). Commit.
 
 **Step 10. LLM-as-judge + judge validation.**
+Split into two commits (judge implementation first, validation harness
+second) so the parser and prompt design can be reviewed in isolation
+before the validation gate is wired up.
+
+Commit 10a (this step): `src/rag_eval/judge.py` and prompt additions to
+`prompts.py`. `Verdict` gains `UNPARSEABLE` in `scorer_rules.py` — only
+LLM-based scorers emit it, but keeping one enum means the aggregator
+(Step 12) doesn't translate.
+
+Commit 10b (next step): judge_validation.py + human-labeled sample.
+
 Two files, one commit:
 - `src/rag_eval/judge.py`: `judge(question, reference, context, answer) ->
   Verdict`. Prompt requests a strict `VERDICT: <token>` line; parser looks
