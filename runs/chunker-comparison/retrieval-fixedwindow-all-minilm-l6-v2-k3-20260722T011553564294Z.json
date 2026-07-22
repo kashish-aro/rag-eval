@@ -1,0 +1,295 @@
+{
+  "config": {
+    "chunker": "FixedWindowChunker",
+    "chunker_params": {
+      "size": 400,
+      "overlap": 50
+    },
+    "embedder_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "k": 3
+  },
+  "generated_at": "2026-07-22T01:15:53.564243+00:00",
+  "aggregate": {
+    "k": 3,
+    "n_answerable": 16,
+    "n_unanswerable": 4,
+    "any_hit_rate": 1.0,
+    "mean_recall": 0.9375,
+    "mean_reciprocal_rank": 1.0
+  },
+  "per_question": [
+    {
+      "question_id": "q001",
+      "answerable": true,
+      "retrieved_doc_ids": [
+        "doc_02"
+      ],
+      "relevant_doc_ids": [
+        "doc_02"
+      ],
+      "any_hit_at_k": true,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0
+    },
+    {
+      "question_id": "q002",
+      "answerable": true,
+      "retrieved_doc_ids": [
+        "doc_02"
+      ],
+      "relevant_doc_ids": [
+        "doc_02"
+      ],
+      "any_hit_at_k": true,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0
+    },
+    {
+      "question_id": "q003",
+      "answerable": true,
+      "retrieved_doc_ids": [
+        "doc_03",
+        "doc_02"
+      ],
+      "relevant_doc_ids": [
+        "doc_03"
+      ],
+      "any_hit_at_k": true,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0
+    },
+    {
+      "question_id": "q004",
+      "answerable": true,
+      "retrieved_doc_ids": [
+        "doc_06",
+        "doc_02"
+      ],
+      "relevant_doc_ids": [
+        "doc_06"
+      ],
+      "any_hit_at_k": true,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0
+    },
+    {
+      "question_id": "q005",
+      "answerable": true,
+      "retrieved_doc_ids": [
+        "doc_08",
+        "doc_07"
+      ],
+      "relevant_doc_ids": [
+        "doc_08"
+      ],
+      "any_hit_at_k": true,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0
+    },
+    {
+      "question_id": "q006",
+      "answerable": true,
+      "retrieved_doc_ids": [
+        "doc_09",
+        "doc_04",
+        "doc_15"
+      ],
+      "relevant_doc_ids": [
+        "doc_09"
+      ],
+      "any_hit_at_k": true,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0
+    },
+    {
+      "question_id": "q007",
+      "answerable": true,
+      "retrieved_doc_ids": [
+        "doc_10",
+        "doc_07"
+      ],
+      "relevant_doc_ids": [
+        "doc_10"
+      ],
+      "any_hit_at_k": true,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0
+    },
+    {
+      "question_id": "q008",
+      "answerable": true,
+      "retrieved_doc_ids": [
+        "doc_13",
+        "doc_15"
+      ],
+      "relevant_doc_ids": [
+        "doc_13"
+      ],
+      "any_hit_at_k": true,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0
+    },
+    {
+      "question_id": "q009",
+      "answerable": true,
+      "retrieved_doc_ids": [
+        "doc_15",
+        "doc_14"
+      ],
+      "relevant_doc_ids": [
+        "doc_15"
+      ],
+      "any_hit_at_k": true,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0
+    },
+    {
+      "question_id": "q010",
+      "answerable": true,
+      "retrieved_doc_ids": [
+        "doc_16",
+        "doc_06"
+      ],
+      "relevant_doc_ids": [
+        "doc_16"
+      ],
+      "any_hit_at_k": true,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0
+    },
+    {
+      "question_id": "q011",
+      "answerable": true,
+      "retrieved_doc_ids": [
+        "doc_17"
+      ],
+      "relevant_doc_ids": [
+        "doc_17"
+      ],
+      "any_hit_at_k": true,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0
+    },
+    {
+      "question_id": "q012",
+      "answerable": true,
+      "retrieved_doc_ids": [
+        "doc_18",
+        "doc_15"
+      ],
+      "relevant_doc_ids": [
+        "doc_18"
+      ],
+      "any_hit_at_k": true,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0
+    },
+    {
+      "question_id": "q013",
+      "answerable": true,
+      "retrieved_doc_ids": [
+        "doc_04"
+      ],
+      "relevant_doc_ids": [
+        "doc_04",
+        "doc_05"
+      ],
+      "any_hit_at_k": true,
+      "recall_at_k": 0.5,
+      "reciprocal_rank": 1.0
+    },
+    {
+      "question_id": "q014",
+      "answerable": true,
+      "retrieved_doc_ids": [
+        "doc_11"
+      ],
+      "relevant_doc_ids": [
+        "doc_11",
+        "doc_12"
+      ],
+      "any_hit_at_k": true,
+      "recall_at_k": 0.5,
+      "reciprocal_rank": 1.0
+    },
+    {
+      "question_id": "q015",
+      "answerable": true,
+      "retrieved_doc_ids": [
+        "doc_15",
+        "doc_14"
+      ],
+      "relevant_doc_ids": [
+        "doc_14",
+        "doc_15"
+      ],
+      "any_hit_at_k": true,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0
+    },
+    {
+      "question_id": "q016",
+      "answerable": true,
+      "retrieved_doc_ids": [
+        "doc_16",
+        "doc_03"
+      ],
+      "relevant_doc_ids": [
+        "doc_03",
+        "doc_16"
+      ],
+      "any_hit_at_k": true,
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0
+    },
+    {
+      "question_id": "q017",
+      "answerable": false,
+      "retrieved_doc_ids": [
+        "doc_02",
+        "doc_18"
+      ],
+      "relevant_doc_ids": [],
+      "any_hit_at_k": null,
+      "recall_at_k": null,
+      "reciprocal_rank": null
+    },
+    {
+      "question_id": "q018",
+      "answerable": false,
+      "retrieved_doc_ids": [
+        "doc_10",
+        "doc_09",
+        "doc_18"
+      ],
+      "relevant_doc_ids": [],
+      "any_hit_at_k": null,
+      "recall_at_k": null,
+      "reciprocal_rank": null
+    },
+    {
+      "question_id": "q019",
+      "answerable": false,
+      "retrieved_doc_ids": [
+        "doc_13",
+        "doc_15"
+      ],
+      "relevant_doc_ids": [],
+      "any_hit_at_k": null,
+      "recall_at_k": null,
+      "reciprocal_rank": null
+    },
+    {
+      "question_id": "q020",
+      "answerable": false,
+      "retrieved_doc_ids": [
+        "doc_05",
+        "doc_04"
+      ],
+      "relevant_doc_ids": [],
+      "any_hit_at_k": null,
+      "recall_at_k": null,
+      "reciprocal_rank": null
+    }
+  ]
+}
